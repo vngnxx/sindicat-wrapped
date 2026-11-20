@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050508">
+<title>SINDICATE WRAPPED — Minta lagu</title>
+<style>
+  :root {
+    --bg:#050508; --bg2:#0c0c14; --card:#12121c; --border:#26263a;
+    --text:#f2f2ff; --sub:#a89e9e; --cyan:#ff2233; --magenta:#ff9500;
+    --glow-cyan:0 0 8px rgba(255,34,51,.55),0 0 22px rgba(255,34,51,.25);
+    --glow-magenta:0 0 8px rgba(255,149,0,.55),0 0 22px rgba(255,149,0,.25);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:radial-gradient(1200px 600px at 50% -10%, #2a1010 0%, var(--bg) 55%); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,sans-serif; min-height:100vh; }
+  header { padding:22px 16px 10px; text-align:center; }
+  .logo-img { width:min(320px,78vw); height:auto; display:block; margin:0 auto; border-radius:12px; box-shadow:0 0 14px rgba(255,34,51,.45),0 0 44px rgba(255,34,51,.18); }
+  .logo-bar { width:150px; height:2px; margin:14px auto 0; background:linear-gradient(90deg,transparent,var(--cyan),var(--magenta),transparent); box-shadow:0 0 10px rgba(255,34,51,.6),0 0 10px rgba(255,149,0,.6); border-radius:2px; }
+  .wrap { max-width:520px; margin:0 auto; padding:0 16px 96px; }
+  .searchbox { position:sticky; top:0; background:linear-gradient(var(--bg) 82%, transparent); padding:12px 0; z-index:5; }
+  input[type=search] { width:100%; padding:14px 16px; font-size:16px; border-radius:28px; border:1px solid var(--cyan); background:var(--bg2); color:var(--text); outline:none; box-shadow:var(--glow-cyan); }
+  input[type=search]:focus { border-color:var(--magenta); box-shadow:var(--glow-magenta); }
+  input[type=search]::placeholder { color:#6a6a88; }
+  .track { display:flex; gap:12px; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:8px; }
+  .track:hover { border-color:var(--cyan); box-shadow:var(--glow-cyan); }
+  .track img { width:52px; height:52px; border-radius:6px; object-fit:cover; flex-shrink:0; background:#1a1a28; }
+  .meta { flex:1; min-width:0; }
+  .meta .name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta .artists { color:var(--sub); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  button.add { background:linear-gradient(135deg,var(--cyan),var(--magenta)); border:none; color:#050508; font-weight:800; padding:9px 14px; border-radius:20px; font-size:14px; box-shadow:var(--glow-magenta); }
+  button.add:disabled { opacity:.5; box-shadow:none; }
+  .toast { position:fixed; left:16px; right:16px; bottom:70px; background:var(--cyan); color:#050508; font-weight:800; text-align:center; padding:14px; border-radius:12px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:10; box-shadow:var(--glow-cyan); }
+  .toast.show { opacity:1; }
+  .toast.err { background:var(--magenta); color:#fff; box-shadow:var(--glow-magenta); }
+  h2 { font-size:15px; letter-spacing:2px; text-transform:uppercase; color:var(--magenta); text-shadow:var(--glow-magenta); border-bottom:1px solid var(--border); padding-bottom:6px; }
+  .queue .name { font-size:14px; }
+  .empty { color:var(--sub); text-align:center; padding:24px 0; font-size:14px; }
+  .nav { position:fixed; bottom:0; left:0; right:0; background:rgba(12,12,20,.92); border-top:1px solid var(--border); backdrop-filter:blur(8px); display:flex; z-index:6; }
+  .nav a { flex:1; text-align:center; padding:14px 0 16px; color:var(--sub); text-decoration:none; font-size:13px; }
+  .nav a.active { color:var(--cyan); font-weight:700; text-shadow:var(--glow-cyan); }
+  .hint { font-size:12px; color:var(--sub); text-align:center; padding-top:4px; }
+</style>
+</head>
+<body>
+<header>
+  <img class="logo-img" src="logo.png" alt="SINDICATE CREW">
+  <div class="logo-bar"></div>
+  <p style="margin:10px 0 0;color:var(--sub);font-size:14px">Pilih lagumu — langsung masuk ke playlist kafe 🎧</p>
+</header>
+
+<div class="wrap">
+  <div id="view-search" class="view">
+    <div class="searchbox">
+      <input id="q" type="search" placeholder="Cari lagu atau artis…" autocomplete="off">
+      <p class="hint" id="status"></p>
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <div id="view-queue" class="view" style="display:none">
+    <h2>Berikutnya di kafe</h2>
+    <div id="queue" class="queue"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<nav class="nav">
+  <a href="#" id="tab-search" class="active">🔍 Cari</a>
+  <a href="#" id="tab-queue">📻 Antrean</a>
+</nav>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const toastEl = $("toast");
+let toastTimer;
+function toast(msg, isError = false) {
+  toastEl.textContent = msg;
+  toastEl.className = "toast show" + (isError ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+
+// Tabs
+function showTab(which) {
+  $("view-search").style.display = which === "search" ? "" : "none";
+  $("view-queue").style.display = which === "queue" ? "" : "none";
+  $("tab-search").classList.toggle("active", which === "search");
+  $("tab-queue").classList.toggle("active", which === "queue");
+  if (which === "queue") loadQueue();
+}
+$("tab-search").onclick = (e) => { e.preventDefault(); showTab("search"); };
+$("tab-queue").onclick = (e) => { e.preventDefault(); showTab("queue"); };
+
+// Search (debounced)
+let searchTimer;
+$("q").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  const q = $("q").value.trim();
+  searchTimer = setTimeout(() => doSearch(q), 350);
+});
+
+async function doSearch(q) {
+  if (q.length < 2) { $("results").innerHTML = ""; $("status").textContent = ""; return; }
+  $("status").textContent = "Mencari…";
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    $("status").textContent = "";
+    render(data.tracks, $("results"), true);
+    if (!data.tracks.length) $("results").innerHTML = '<p class="empty">Lagu tidak ditemukan — coba kata kunci lain.</p>';
+  } catch (e) {
+    $("status").textContent = "";
+    $("results").innerHTML = `<p class="empty">Pencarian gagal: ${e.message}</p>`;
+  }
+}
+
+function trackHtml(t) {
+  return `<div class="track">
+    <img src="${t.image || ""}" alt="" onerror="this.style.visibility='hidden'">
+    <div class="meta"><div class="name">${esc(t.name)}</div><div class="artists">${esc(t.artists)}</div></div>
+    <button class="add" data-uri="${t.uri}" data-name="${esc(t.name)}">＋ Minta</button>
+  </div>`;
+}
+const esc = (s) => (s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+function render(tracks, container, isRequest) {
+  container.innerHTML = tracks.map(trackHtml).join("");
+  container.querySelectorAll("button.add").forEach((btn) => {
+    btn.onclick = () => isRequest ? requestSong(btn) : null;
+  });
+}
+
+async function requestSong(btn) {
+  btn.disabled = true;
+  btn.textContent = "…";
+  try {
+    const res = await fetch("/api/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uri: btn.dataset.uri }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast("✅ Lagu ditambahkan! Permintaanmu masuk antrean 🎵");
+      btn.textContent = "Ditambahkan ✓";
+    } else {
+      toast(data.error || "Terjadi kesalahan", true);
+      btn.textContent = "＋ Minta";
+      btn.disabled = false;
+    }
+  } catch (e) {
+    toast("Kesalahan jaringan — periksa koneksi internetmu", true);
+    btn.textContent = "＋ Minta";
+    btn.disabled = false;
+  }
+}
+
+async function loadQueue() {
+  try {
+    const res = await fetch("/api/queue");
+    const data = await res.json();
+    const container = $("queue");
+    if (!data.tracks || !data.tracks.length) {
+      container.innerHTML = '<p class="empty">Antrean masih kosong — jadilah yang pertama minta lagu!</p>';
+    } else {
+      container.innerHTML = data.tracks.map((t, i) =>
+        `<div class="track"><div class="meta" style="padding-left:6px"><div class="name">${i + 1}. ${esc(t.name)}</div><div class="artists">${esc(t.artists)}</div></div></div>`
+      ).join("");
+    }
+  } catch {}
+}
+
+loadQueue();
+setInterval(() => { if ($("view-queue").style.display !== "none") loadQueue(); }, 10000);
+</script>
+</body>
+</html>

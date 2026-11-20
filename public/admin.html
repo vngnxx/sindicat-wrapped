@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SINDICATE WRAPPED — Tampilan host</title>
+<style>
+  :root {
+    --bg:#050508; --bg2:#0c0c14; --card:#12121c; --border:#26263a;
+    --text:#f2f2ff; --sub:#a89e9e; --cyan:#ff2233; --magenta:#ff9500;
+    --glow-cyan:0 0 8px rgba(255,34,51,.55),0 0 22px rgba(255,34,51,.25);
+    --glow-magenta:0 0 8px rgba(255,149,0,.55),0 0 22px rgba(255,149,0,.25);
+  }
+  body { margin:0; background:radial-gradient(1200px 600px at 50% -10%, #2a1010 0%, var(--bg) 55%); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { padding:14px 16px; display:flex; justify-content:space-between; align-items:center; background:rgba(12,12,20,.92); border-bottom:1px solid var(--border); }
+  header img { height:52px; width:auto; border-radius:8px; box-shadow:0 0 10px rgba(255,34,51,.4); }
+  h1 { margin:0; font-size:18px; letter-spacing:2px; color:var(--cyan); text-shadow:0 0 6px rgba(0,240,255,.9),0 0 18px rgba(0,240,255,.5); }
+  h1 span { color:var(--magenta); text-shadow:0 0 6px rgba(255,47,214,.9),0 0 18px rgba(255,47,214,.5); }
+  .wrap { max-width:640px; margin:0 auto; padding:16px; }
+  button { background:linear-gradient(135deg,var(--cyan),var(--magenta)); border:none; color:#050508; font-weight:800; padding:10px 16px; border-radius:8px; cursor:pointer; margin-right:8px; margin-bottom:8px; box-shadow:var(--glow-magenta); }
+  button.grey { background:var(--card); color:var(--cyan); border:1px solid var(--cyan); box-shadow:var(--glow-cyan); }
+  select { padding:8px; border-radius:6px; background:var(--bg2); color:var(--text); border:1px solid var(--border); max-width:100%; margin-bottom:8px; }
+  .track { display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:6px; }
+  .track:hover { border-color:var(--magenta); box-shadow:var(--glow-magenta); }
+  .track .name { font-weight:600; }
+  .track .artists { color:var(--sub); font-size:13px; }
+  .note { color:var(--sub); font-size:13px; }
+  h2 { font-size:15px; letter-spacing:2px; text-transform:uppercase; color:var(--magenta); text-shadow:var(--glow-magenta); border-bottom:1px solid var(--border); padding-bottom:6px; }
+</style>
+</head>
+<body>
+  <header>
+  <img src="logo.png" alt="SINDICATE CREW">
+  <h1>SINDICATE <span>WRAPPED</span> — Host</h1>
+  <button class="grey" onclick="location.href='/'">Halaman tamu</button>
+</header>
+<div class="wrap">
+  <p class="note">Kontrol pemutaran membutuhkan Spotify Premium dan perangkat Spotify yang aktif (laptop / tablet / speaker kafe). Pilih perangkatnya di bawah, lalu gunakan Putar / Jeda / Lewati.</p>
+  <div>
+    <label class="note" for="device">Perangkat pemutar:</label><br>
+    <select id="device"></select>
+    <button onclick="refreshDevices()">Muat ulang perangkat</button>
+  </div>
+  <div>
+    <button id="play" onclick="play()">▶ Putar antrean</button>
+    <button id="pause" class="grey" onclick="pause()">⏸ Jeda</button>
+    <button id="skip" class="grey" onclick="skip()">⏭ Lewati</button>
+  </div>
+  <h2>Antrean (terbaru di bawah)</h2>
+  <div id="queue"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function refreshDevices() {
+  try {
+    const res = await fetch("/api/admin/devices");
+    const data = await res.json();
+    $("device").innerHTML = (data.devices || []).map((d) =>
+      `<option value="${d.id}">${d.name}${d.is_active ? " (active)" : ""}</option>`
+    ).join("") || "<option value=''>Tidak ada perangkat ditemukan</option>";
+  } catch (e) { alert(e.message); }
+}
+
+async function api(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const data = await res.json();
+  if (!res.ok) alert(data.error || "Gagal");
+}
+
+function play() { api("/api/admin/play", { deviceId: $("device").value }); }
+function pause() { api("/api/admin/pause", { deviceId: $("device").value }); }
+function skip() { api("/api/admin/skip", {}); }
+
+async function loadQueue() {
+  try {
+    const res = await fetch("/api/queue");
+    const data = await res.json();
+    $("queue").innerHTML = (data.tracks || []).map((t, i) =>
+      `<div class="track"><div><div class="name">${i + 1}. ${t.name}</div><div class="artists">${t.artists}</div></div>
+       <button onclick='api("/api/admin/play", {deviceId: document.getElementById("device").value, uri: "${t.uri}"})'>Putar</button></div>`
+    ).join("") || "<p class='note'>Antrean kosong.</p>";
+  } catch {}
+}
+
+refreshDevices();
+loadQueue();
+setInterval(loadQueue, 8000);
+</script>
+</body>
+</html>

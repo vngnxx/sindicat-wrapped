@@ -1,0 +1,21 @@
+{
+  "name": "cafe-jukebox",
+  "version": "1.0.0",
+  "description": "Guest song-request system for a cafe: guests scan a QR code, search and add songs to one shared Spotify playlist.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "login": "node scripts/login.js",
+    "qr": "node scripts/generate-qr.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.0"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true
+  }
+}
