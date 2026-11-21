@@ -37,7 +37,16 @@ app.get("/callback", async (req, res) => {
 
 // ---------- Guest API ----------
 app.get("/api/info", (req, res) => {
-  res.json({ name: process.env.CAFE_NAME || "SINDICATE WRAPPED", connected: !!spotify.getRefreshToken() });
+  res.json({
+    name: process.env.CAFE_NAME || "SINDICATE WRAPPED",
+    connected: !!spotify.getRefreshToken(),
+    debug: {
+      refreshTokenLength: (process.env.SPOTIFY_REFRESH_TOKEN || "").length,
+      refreshTokenStart: (process.env.SPOTIFY_REFRESH_TOKEN || "").slice(0, 6),
+      refreshTokenEnd: (process.env.SPOTIFY_REFRESH_TOKEN || "").slice(-6),
+      playlistIdSet: !!process.env.SPOTIFY_PLAYLIST_ID,
+    },
+  });
 });
 
 app.get("/api/search", async (req, res) => {
