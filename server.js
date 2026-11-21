@@ -44,6 +44,12 @@ app.get("/api/info", (req, res) => {
       refreshTokenLength: (process.env.SPOTIFY_REFRESH_TOKEN || "").length,
       refreshTokenStart: (process.env.SPOTIFY_REFRESH_TOKEN || "").slice(0, 6),
       refreshTokenEnd: (process.env.SPOTIFY_REFRESH_TOKEN || "").slice(-6),
+      clientIdStart: (process.env.SPOTIFY_CLIENT_ID || "").slice(0, 6),
+      clientIdEnd: (process.env.SPOTIFY_CLIENT_ID || "").slice(-6),
+      clientIdLength: (process.env.SPOTIFY_CLIENT_ID || "").length,
+      secretStart: (process.env.SPOTIFY_CLIENT_SECRET || "").slice(0, 6),
+      secretEnd: (process.env.SPOTIFY_CLIENT_SECRET || "").slice(-6),
+      secretLength: (process.env.SPOTIFY_CLIENT_SECRET || "").length,
       playlistIdSet: !!process.env.SPOTIFY_PLAYLIST_ID,
     },
   });
