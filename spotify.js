@@ -47,6 +47,7 @@ async function token() {
   const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN || SPOTIFY_REFRESH_TOKEN;
   if (!refreshToken) throw new Error("Spotify not connected — visit /login first");
   console.log(`[spotify] refresh attempt: token length = ${refreshToken.length}, starts "${refreshToken.slice(0, 5)}", ends "${refreshToken.slice(-5)}"`);
+  console.log(`[spotify] client id length = ${(process.env.SPOTIFY_CLIENT_ID || "").length}, client secret length = ${(process.env.SPOTIFY_CLIENT_SECRET || "").length}`);
 
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -56,7 +57,11 @@ async function token() {
     },
     body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }),
   });
-  if (!res.ok) throw new Error(`Token refresh failed (${res.status}). Reconnect at /login (sent token: ${refreshToken.length} chars)`);
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[spotify] refresh FAILED ${res.status}: ${body}`);
+    throw new Error(`Token refresh failed (${res.status}) — Spotify says: ${body} (sent token: ${refreshToken.length} chars, secret: ${(process.env.SPOTIFY_CLIENT_SECRET || "").length} chars). Reconnect at /login`);
+  }
   const data = await res.json();
   accessToken = data.access_token;
   tokenExpiresAt = Date.now() + data.expires_in * 1000;
